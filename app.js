@@ -1,6 +1,7 @@
  // ─── CONFIG ────────────────────────────────────────────────────────────────
 const TOKEN = "sk_snk_a7Xq2mP9vL4nR8tK";
 const FY25_MONTHS = new Set(['2025-04','2025-05','2025-06','2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03']);
+const FY26_MONTHS = new Set(['2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03']);
     const API_URL = "https://script.google.com/macros/s/AKfycbxM2JHOpEzxrUOKpc0fFfrbX0go3L7lVBWxAY8tERN1FYbOIBzfNjs4h7UsVpi9y-0i/exec?token=" + TOKEN;
 const SKU_URL = API_URL + "&type=sku";
 const SKU_DAILY_URL = API_URL + "&type=skudaily";
@@ -68,7 +69,7 @@ const FY25_SKU_URL = API_URL + "&type=fy25sku";
     let chartRoasTrend = null;
     let chartRoasPlatformTrend = null;
     let skuDailyData = [];
-    let activeMonth = '08';
+    let activeMonth = '09';
     let activePeriod = 'mtd';
     // t1, t2, 7d, mtd, custom
     let chartMix = null;
@@ -339,18 +340,24 @@ function getFilteredData() {
         {y:2025,m:7,l:'Jul 25'},{y:2025,m:8,l:'Aug 25'},{y:2025,m:9,l:'Sep 25'},
         {y:2025,m:10,l:'Oct 25'},{y:2025,m:11,l:'Nov 25'},{y:2025,m:12,l:'Dec 25'},
         {y:2026,m:1,l:'Jan 26'},{y:2026,m:2,l:'Feb 26'},{y:2026,m:3,l:'Mar 26'},
-        {y:2026,m:4,l:'Apr 26'},{y:2026,m:5,l:'May 26'},{y:2026,m:6,l:'Jun 26'},{y:2026,m:7,l:'Jul 26'}
+        {y:2026,m:4,l:'Apr 26'},{y:2026,m:5,l:'May 26'},{y:2026,m:6,l:'Jun 26'},{y:2026,m:7,l:'Jul 26'},
+        {y:2026,m:8,l:'Aug 26'},{y:2026,m:9,l:'Sep 26'},{y:2026,m:10,l:'Oct 26'},
+        {y:2026,m:11,l:'Nov 26'},{y:2026,m:12,l:'Dec 26'},
+        {y:2027,m:1,l:'Jan 27'},{y:2027,m:2,l:'Feb 27'},{y:2027,m:3,l:'Mar 27'}
       ];
       const QUARTERS = [
         {l:'Q1 FY26',months:[{y:2025,m:4},{y:2025,m:5},{y:2025,m:6}]},
         {l:'Q2 FY26',months:[{y:2025,m:7},{y:2025,m:8},{y:2025,m:9}]},
         {l:'Q3 FY26',months:[{y:2025,m:10},{y:2025,m:11},{y:2025,m:12}]},
         {l:'Q4 FY26',months:[{y:2026,m:1},{y:2026,m:2},{y:2026,m:3}]},
-        {l:'Q1 FY27',months:[{y:2026,m:4},{y:2026,m:5},{y:2026,m:6}]}
+        {l:'Q1 FY27',months:[{y:2026,m:4},{y:2026,m:5},{y:2026,m:6}]},
+        {l:'Q2 FY27',months:[{y:2026,m:7},{y:2026,m:8},{y:2026,m:9}]},
+        {l:'Q3 FY27',months:[{y:2026,m:10},{y:2026,m:11},{y:2026,m:12}]},
+        {l:'Q4 FY27',months:[{y:2027,m:1},{y:2027,m:2},{y:2027,m:3}]}
       ];
       const FYS = [
         {l:'FY25-26',months:[{y:2025,m:4},{y:2025,m:5},{y:2025,m:6},{y:2025,m:7},{y:2025,m:8},{y:2025,m:9},{y:2025,m:10},{y:2025,m:11},{y:2025,m:12},{y:2026,m:1},{y:2026,m:2},{y:2026,m:3}]},
-        {l:'FY26-27',months:[{y:2026,m:4},{y:2026,m:5},{y:2026,m:6},{y:2026,m:7}]}
+        {l:'FY26-27',months:[{y:2026,m:4},{y:2026,m:5},{y:2026,m:6},{y:2026,m:7},{y:2026,m:8},{y:2026,m:9},{y:2026,m:10},{y:2026,m:11},{y:2026,m:12},{y:2027,m:1},{y:2027,m:2},{y:2027,m:3}]}
       ];
       const QCOM_PLATS = new Set(['Zepto','Instamart','Blinkit']);
       const qcomOnly = rows => rows.filter(r => QCOM_PLATS.has(String(r.Platform)));
@@ -1386,6 +1393,9 @@ function getFilteredData() {
         { label:'Q3 FY26', months:[{m:10,y:2025},{m:11,y:2025},{m:12,y:2025}] },
         { label:'Q4 FY26', months:[{m:1,y:2026},{m:2,y:2026},{m:3,y:2026}] },
         { label:'Q1 FY27', months:[{m:4,y:2026},{m:5,y:2026},{m:6,y:2026}] },
+        { label:'Q2 FY27', months:[{m:7,y:2026},{m:8,y:2026},{m:9,y:2026}] },
+        { label:'Q3 FY27', months:[{m:10,y:2026},{m:11,y:2026},{m:12,y:2026}] },
+        { label:'Q4 FY27', months:[{m:1,y:2027},{m:2,y:2027},{m:3,y:2027}] },
       ];
       return quarters.map(q => {
         const rows = all.filter(r => {
@@ -1404,7 +1414,7 @@ function getFilteredData() {
       const all = getAllData();
       const fys = [
         { label:'FY25-26', months:[{m:4,y:2025},{m:5,y:2025},{m:6,y:2025},{m:7,y:2025},{m:8,y:2025},{m:9,y:2025},{m:10,y:2025},{m:11,y:2025},{m:12,y:2025},{m:1,y:2026},{m:2,y:2026},{m:3,y:2026}] },
-        { label:'FY26-27', months:[{m:4,y:2026},{m:5,y:2026},{m:6,y:2026},{m:7,y:2026}] },
+        { label:'FY26-27', months:[{m:4,y:2026},{m:5,y:2026},{m:6,y:2026},{m:7,y:2026},{m:8,y:2026},{m:9,y:2026},{m:10,y:2026},{m:11,y:2026},{m:12,y:2026},{m:1,y:2027},{m:2,y:2027},{m:3,y:2027}] },
       ];
       return fys.map(fy => {
         const rows = all.filter(r => {
@@ -1858,7 +1868,7 @@ function getFilteredData() {
       const ddEl = document.getElementById('view-deepdive');
       if (ddEl) ddEl.style.display = tab === 'deepdive' ? 'block' : 'none';
        if (tab === 'deepdive') { updateDDView(); }
-     if (tab === 'shopify') {activeShopifyMonth = '04'; ['04','05','06','07'].forEach(k => { const b = document.getElementById('shopify-btn-'+k); if(b) b.classList.toggle('active', k==='04'); }); setTimeout(() => loadShopifyData(), 80); }
+     if (tab === 'shopify') {activeShopifyMonth = '04'; ['01','02','03','04','05','06','07','08','09','10','11','12'].forEach(k => { const b = document.getElementById('shopify-btn-'+k); if(b) b.classList.toggle('active', k==='04'); }); setTimeout(() => loadShopifyData(), 80); }
       const kg = document.getElementById('kpi-grid');
       const dc = document.getElementById('dashboard-content');
       if (kg) kg.style.display = tab === 'overview' ? 'grid' : 'none';
@@ -3441,7 +3451,7 @@ function renderChannelSKUTable(skuRows, skipCache = false) {
 
    function renderShopifyTab() {
       const rows = shopifyRawData;
-      const monthNames = { '04':'April', '05':'May', '06':'June', '07':'July' };
+      const monthNames = { '01':'January', '02':'February', '03':'March', '04':'April', '05':'May', '06':'June', '07':'July', '08':'August', '09':'September', '10':'October', '11':'November', '12':'December' };
       const monthName = monthNames[activeShopifyMonth] || '';
 
       if (!document.getElementById('shopify-subtitle')) return;
