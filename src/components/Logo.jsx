@@ -1,4 +1,4 @@
-/** Snackible mark: a bold S on an orange tile, with a small "bite" spark. */
+/** Shopping bag with a rising line: ecommerce + performance, on the brand orange tile. */
 export default function Logo({ size = 28 }) {
   return (
     <svg className="logo" width={size} height={size} viewBox="0 0 32 32" role="img" aria-label="Snackible">
@@ -10,11 +10,9 @@ export default function Logo({ size = 28 }) {
       </defs>
       <rect width="32" height="32" rx="9" fill="url(#snk-g)" />
       <rect width="32" height="15" rx="9" fill="#fff" opacity="0.1" />
-      <path
-        d="M21.4 11.2c-.7-2.1-2.8-3.2-5.4-3.2-3.1 0-5.1 1.5-5.1 3.7 0 5.3 10.6 2.4 10.6 7.8 0 2.4-2.3 4-5.6 4-2.8 0-5-1.1-5.8-3.4"
-        fill="none" stroke="#fff" strokeWidth="3.1" strokeLinecap="round"
-      />
-      <circle cx="24.8" cy="7.6" r="1.9" fill="#fff" opacity="0.9" />
+      <path d="M12.6 13.6V12a3.4 3.4 0 0 1 6.8 0v1.6" fill="none" stroke="#fff" strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M8.6 12.4h14.8l1.1 11.2a2.2 2.2 0 0 1-2.2 2.4H9.7a2.2 2.2 0 0 1-2.2-2.4z" fill="#fff" />
+      <path d="M12.2 22.2l2.7-3.1 2.1 2 3.2-4" fill="none" stroke="#ea580c" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
