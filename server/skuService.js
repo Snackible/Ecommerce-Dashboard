@@ -12,7 +12,10 @@ export const SKU_SHEETS = {
   'Big Basket': process.env.SHEET_BIGBASKET || '1JhKEC2fbSoAHbDVoxk4tcWOALbwrM3iiokophWw4Ca4',
 };
 
-async function readPlatform(platform, id, creds) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const isPermission = (e) => /permission|not found|forbidden|403|404/i.test(e?.message || '');
+
+async function readPlatformOnce(platform, id, creds) {
   const meta = await sheetsGet(`${id}?fields=sheets.properties.title`, creds);
   const tabs = meta.sheets
     .map((s) => s.properties.title)
@@ -30,18 +33,30 @@ async function readPlatform(platform, id, creds) {
   return { sku, daily };
 }
 
+// Retry transient errors (rate limits, network blips); permission errors won't fix themselves.
+async function readPlatform(platform, id, creds) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try { return await readPlatformOnce(platform, id, creds); }
+    catch (e) { lastErr = e; if (isPermission(e)) break; await sleep(500 * (attempt + 1)); }
+  }
+  throw lastErr;
+}
+
 let cache = { at: 0, value: null };
-const TTL_MS = 5 * 60 * 1000;
+const TTL_OK_MS = 5 * 60 * 1000;
+const TTL_PARTIAL_MS = 20 * 1000; // if anything failed, look again soon
 
 export async function fetchSkuData({ force = false } = {}) {
-  if (!force && cache.value && Date.now() - cache.at < TTL_MS) return cache.value;
+  const ttl = cache.value && Object.keys(cache.value.failed).length ? TTL_PARTIAL_MS : TTL_OK_MS;
+  if (!force && cache.value && Date.now() - cache.at < ttl) return cache.value;
   const creds = loadCredentials();
   const results = await Promise.allSettled(Object.entries(SKU_SHEETS).map(([p, id]) => readPlatform(p, id, creds)));
   const out = { sku: [], skuDaily: [], failed: {} };
   results.forEach((r, i) => {
     const platform = Object.keys(SKU_SHEETS)[i];
     if (r.status === 'fulfilled') { out.sku.push(...r.value.sku); out.skuDaily.push(...r.value.daily); }
-    else out.failed[platform] = r.reason?.message || 'failed';
+    else out.failed[platform] = isPermission(r.reason) ? 'not shared with the service account' : (r.reason?.message || 'unavailable');
   });
   cache = { at: Date.now(), value: out };
   return out;

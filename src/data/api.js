@@ -116,21 +116,41 @@ const SHEETS_KEY = import.meta.env.VITE_SHEETS_API_KEY;
 // SKU data: read from the sheets through our /api/sku endpoint (service account).
 // Any platform the server couldn't read, or the whole call failing, falls back to Apps Script.
 let skuBundle = null;
+let skuNotice = null;
+export const getSkuNotice = () => skuNotice;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchLiveSku(opts) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(opts.force || attempt ? '/api/sku?refresh=1' : '/api/sku');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      return json;
+    } catch (e) { lastErr = e; await wait(700 * (attempt + 1)); }
+  }
+  throw lastErr;
+}
+
 async function loadSkuBundle(opts) {
   if (skuBundle && !opts.force) return skuBundle;
   skuBundle = (async () => {
-    let live = { sku: [], skuDaily: [], failed: null };
+    let live;
     try {
-      const res = await fetch(opts.force ? '/api/sku?refresh=1' : '/api/sku');
-      if (!res.ok) throw new Error(`api/sku ${res.status}`);
-      live = await res.json();
+      live = await fetchLiveSku(opts);
     } catch (e) {
-      console.warn('Sheets SKU endpoint unavailable, using Apps Script:', e.message);
-      live.failed = { all: 'unavailable' };
+      console.warn('Live SKU sheets unavailable, using Apps Script:', e.message);
+      live = { sku: [], skuDaily: [], failed: { all: e.message } };
     }
-    const failed = live.failed ? Object.keys(live.failed) : [];
-    if (!failed.length) return { sku: live.sku, skuDaily: live.skuDaily };
+    const failed = Object.keys(live.failed || {});
+    if (!failed.length) { skuNotice = null; return { sku: live.sku, skuDaily: live.skuDaily }; }
+
     const everything = failed.includes('all');
+    skuNotice = everything
+      ? `Live SKU sheets are unavailable (${live.failed.all}). Showing older data from Apps Script, which only goes up to Aug 26.`
+      : `${failed.join(' and ')} SKU ${failed.length > 1 ? 'sheets are' : 'sheet is'} ${Object.values(live.failed)[0] === 'not shared with the service account' ? 'not shared with the service account yet' : 'unavailable'}, so ${failed.length > 1 ? 'they use' : 'it uses'} older Apps Script data (up to Aug 26).`;
     const want = (r) => everything || failed.includes(String(r.Platform));
     const [sku, skuDaily] = await Promise.all([
       fetchJson('sku', opts).catch(() => []),

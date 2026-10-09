@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { clearCache, loaders } from './api';
+import { clearCache, getSkuNotice, loaders } from './api';
 import { latestDate } from '../lib/selectors';
 
 const DataContext = createContext(null);
@@ -16,6 +16,7 @@ export function DataProvider({ children }) {
   const [refreshing, setRefreshing] = useState(false);
   const [loadedAt, setLoadedAt] = useState(null);
   const [secondary, setSecondary] = useState({ fy25: 'idle', sku: 'idle', fy25Sku: 'idle', skuDaily: 'idle' });
+  const [skuNotice, setSkuNotice] = useState(null);
   const inflight = useRef({});
 
   const setSec = (k, v) => setSecondary((s) => ({ ...s, [k]: v }));
@@ -27,6 +28,7 @@ export function DataProvider({ children }) {
       .then((rows) => {
         setState((s) => ({ ...s, [key]: rows }));
         setSec(key, 'ready');
+        if (key === 'sku' || key === 'skuDaily') setSkuNotice(getSkuNotice());
       })
       .catch((e) => {
         console.error(`${key} load failed`, e);
@@ -70,9 +72,9 @@ export function DataProvider({ children }) {
   }, [secondary.skuDaily, loadSecondary]);
 
   const value = useMemo(() => ({
-    ...state, status, error, refreshing, loadedAt, secondary, refresh, ensureSkuDaily,
+    ...state, status, error, refreshing, loadedAt, secondary, refresh, ensureSkuDaily, skuNotice,
     latest: latestDate(state.oms),
-  }), [state, status, error, refreshing, loadedAt, secondary, refresh, ensureSkuDaily]);
+  }), [state, status, error, refreshing, loadedAt, secondary, refresh, ensureSkuDaily, skuNotice]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

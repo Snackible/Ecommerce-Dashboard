@@ -22,6 +22,7 @@ const TAB_GROUPS = [
   [{ id: 'shopify', label: 'Shopify' }, { id: 'deepdive', label: 'Deep dive' }],
 ];
 const CHANNEL_TABS = new Set(['Blinkit', 'Zepto', 'Instamart', 'Big Basket']);
+const SKU_TABS = new Set(['skus', 'skucompare', 'deepdive', 'Blinkit', 'Zepto', 'Instamart', 'Big Basket']);
 const USES_FILTERS = new Set(['overview', 'skus', 'deepdive', ...CHANNEL_TABS]);
 const TITLES = {
   overview: 'Executive overview', compare: 'Compare periods', skus: 'SKU view', skucompare: 'SKU compare',
@@ -66,7 +67,7 @@ function InlineError({ message, onRetry }) {
 function Shell() {
   const [tab, setTab] = useState('overview');
   const [ddMetric, setDdMetric] = useState('sales');
-  const { refresh, refreshing, loadedAt, oms, status, error } = useData();
+  const { refresh, refreshing, loadedAt, oms, status, error, skuNotice } = useData();
   const loading = status === 'loading';
   const { latest } = useData();
   const { pref, setPref } = useTheme();
@@ -137,6 +138,9 @@ function Shell() {
 
         {USES_FILTERS.has(tab) && !loading && status !== 'error' && <FilterBar />}
 
+        {skuNotice && SKU_TABS.has(tab) && status === 'ready' && (
+          <p className="notice-bar" role="status"><b>SKU data:</b> {skuNotice}</p>
+        )}
         {loading && <InlineLoader />}
         {status === 'error' && <InlineError message={error} onRetry={refresh} />}
         {status === 'ready' && <div key={tab} className="fade-in">

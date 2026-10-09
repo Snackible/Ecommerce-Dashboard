@@ -371,7 +371,7 @@ input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.55); cu
 .apexcharts-legend-text { color: var(--text-2) !important; }
 
 /* ── Redesign layer ──────────────────────────────────────────── */
-.logo { display: block; filter: drop-shadow(0 6px 14px rgba(249, 115, 22, 0.35)); }
+.logo { display: block; }
 .page-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .asof { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-2); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
 .page-head { padding-bottom: 22px; }
@@ -418,3 +418,6 @@ input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.55); cu
 .topbar .seg { flex-wrap: nowrap; }
 .topbar-right { gap: 10px; }
 @media (max-width: 720px) { .topbar .btn-ghost span, .topbar .btn-ghost { padding: 6px 9px; } .topbar .seg button { padding: 4px 8px; } }
+
+.notice-bar { margin-bottom: 18px; padding: 10px 14px; font-size: 12px; line-height: 1.5; color: var(--warn); background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); border-radius: var(--r-md); }
+.notice-bar b { font-weight: 600; }
