@@ -1,8 +1,3 @@
-node_modules
-dist
-.env
-.env.local
-sheet-export
-service-account*.json
-*.json.key
+repo/
 turing-guard-*.json
+.claude/
