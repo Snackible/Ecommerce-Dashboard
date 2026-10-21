@@ -125,10 +125,9 @@ async function fetchLiveSku(opts) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch(opts.force || attempt ? '/api/sku?refresh=1' : '/api/sku');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      return json;
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body.error) throw new Error(body.error ? `${body.error} (HTTP ${res.status})` : `HTTP ${res.status}`);
+      return body;
     } catch (e) { lastErr = e; await wait(700 * (attempt + 1)); }
   }
   throw lastErr;

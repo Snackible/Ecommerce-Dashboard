@@ -2,9 +2,7 @@
 // row shapes the Apps Script used to serve:
 //   sku       { Month, Year, Platform, Category, SKU, EstRevenue, MTDUnits, MTDRevenue, Day1..Day31 }
 //   skuDaily  { Date, Platform, SKU, Category, GMV, Units, Month, Year }
-import { createRequire } from 'node:module';
-
-const catalog = createRequire(import.meta.url)('./skuCatalog.json');
+import catalog from './skuCatalog.js';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const SECTION_LABELS = new Set(['total', 'ragi chips', 'dipsters', 'puffs', 'jowar chips', 'jowar', 'others', 'chips', 'dips', 'bhujia', 'multigrain chips', 'chickpea chips', 'chickpea puffs']);
