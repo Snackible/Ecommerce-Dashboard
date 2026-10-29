@@ -5,7 +5,9 @@
 import catalog from './skuCatalog.js';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-const SECTION_LABELS = new Set(['total', 'ragi chips', 'dipsters', 'puffs', 'jowar chips', 'jowar', 'others', 'chips', 'dips', 'bhujia', 'multigrain chips', 'chickpea chips', 'chickpea puffs']);
+// Roll-up rows ("Total", "Ragi Chips", "Jowar products", ...) sit above their SKUs; counting them would double-count.
+const SECTION_RE = /^(total|ragi chips|dipsters|puffs|others|chips|dips|bhujia|multigrain chips|chickpea (chips|puffs)|jowar( (chips|products?|skus?|snacks|range))?)$/i;
+const SECTION_LABELS = { has: (name) => SECTION_RE.test(name.trim()) };
 const STOP = new Set(['snackible', 'with', 'and', 'the', 'a', 'dip', 'g', 'gm', 'gram', 'no', 'palm', 'oil', 'made', 'millets', 'millet', 'snack', 'high', 'fibre', 'healthy', 'free', 'of', 'in']);
 
 const toNum = (v) => {
@@ -52,6 +54,12 @@ export function cleanSkuName(raw) {
   const out = best && bestScore >= 0.5 ? best.name : fallback;
   nameCache.set(key, out);
   return out;
+}
+
+/** Display name: drop the brand prefix and pack size ("Snackible Sweet Chilli Jowar Chips 55 G" -> "Sweet Chilli Jowar Chips"). */
+export function tidySku(name) {
+  const t = name.replace(/^snackible\s+/i, '').replace(/\s+\d+(\.\d+)?\s*(g|gm|gram)\b.*$/i, '').trim();
+  return t ? t[0].toUpperCase() + t.slice(1) : name;
 }
 
 export function categoryFor(cleanName) {
@@ -112,10 +120,11 @@ export function parseSkuTab(grid, { platform, month, year }) {
     const rev = toNum(row[cols.rev]);
     if (!units && !rev && !blocks.some((b) => toNum(row[b.col + 1]))) continue;
 
-    const sku = cleanSkuName(rawName);
+    const matched = cleanSkuName(rawName);
+    const sku = tidySku(matched);
     const key = sku;
     const a = agg.get(key) || {
-      Month: month, Year: year, Platform: platform, Category: categoryFor(sku), SKU: sku,
+      Month: month, Year: year, Platform: platform, Category: categoryFor(matched), SKU: sku,
       EstRevenue: 0, MTDUnits: 0, MTDRevenue: 0, days: {}, dayUnits: {},
     };
     a.EstRevenue += toNum(row[cols.est]);

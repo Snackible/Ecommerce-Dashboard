@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import Chart from '../components/Chart';
-import { Card, CatBadge, Empty, Kpi, KpiGrid, PctBar, Segmented, Select, Skeleton } from '../components/ui';
-import { CAT_COLORS, CATEGORIES, isPrevFY, platColor } from '../config';
+import { Card, CatBadge, Delta, Empty, Kpi, KpiGrid, PctBar, Segmented, Select, Skeleton } from '../components/ui';
+import { CAT_COLORS, CATEGORIES, isPrevFY, monthKey, platColor } from '../config';
 import { useData } from '../data/DataContext';
 import { useFilters } from '../data/FiltersContext';
 import { skuSource } from '../lib/selectors';
@@ -53,9 +53,11 @@ export default function SkuView() {
     src.forEach((r) => {
       if (!monthMatches(r, month, prev)) return;
       if (plat !== 'All' && r.Platform !== plat) return;
-      if (cat !== 'All' && String(r.Category) !== cat) return;
+      // "Jowar" is a product family that cuts across categories (chips and puffs), so match by name.
+      if (cat === 'Jowar') { if (!/jowar/i.test(r.SKU)) return; }
+      else if (cat !== 'All' && String(r.Category) !== cat) return;
       if (q && !r.SKU.toLowerCase().includes(q)) return;
-      const a = (agg[r.SKU] ||= { sku: r.SKU, category: String(r.Category), rev: 0, units: 0, est: 0, platforms: {} });
+      const a = (agg[r.SKU] ||= { sku: r.SKU, category: String(r.Category), rev: 0, units: 0, est: 0, platforms: {}, platUnits: {} });
       let rev = 0;
       if (prev) {
         rev = num(r.MTDRevenue);
@@ -69,36 +71,83 @@ export default function SkuView() {
       a.units += num(r.MTDUnits);
       a.est += num(r.EstRevenue);
       a.platforms[r.Platform] = (a.platforms[r.Platform] || 0) + rev;
+      a.platUnits[r.Platform] = (a.platUnits[r.Platform] || 0) + num(r.MTDUnits);
     });
     return Object.values(agg).sort((a, b) => b.rev - a.rev);
   }, [src, month, prev, plat, cat, search, period, customStart, customEnd, data.latest]);
 
+  // Month-over-month, like for like: this month so far vs the same days of the previous month
+  // (or whole month vs whole month for a closed one). Only for MTD views within the current FY.
+  const mom = useMemo(() => {
+    if (month === 'All' || prev || period !== 'mtd') return null;
+    const [y, m] = month.split('-').map(Number);
+    const py = m === 1 ? y - 1 : y;
+    const pm = m === 1 ? 12 : m - 1;
+    if (isPrevFY(monthKey(py, pm))) return null; // the previous FY only has monthly totals, no daily split
+    const isLatestMonth = y === data.latest.getFullYear() && m === data.latest.getMonth() + 1;
+    const upto = isLatestMonth ? data.latest.getDate() : 31;
+    const byKey = {};
+    data.sku.forEach((r) => {
+      if (r.Month !== pm || r._y !== py) return;
+      let t = 0;
+      for (let d = 1; d <= upto; d++) t += num(r['Day' + d]);
+      const k = `${r.Platform}|${r.SKU}`;
+      byKey[k] = (byKey[k] || 0) + t;
+    });
+    return { byKey, upto, isLatestMonth, prevLabel: monthKey(py, pm) };
+  }, [data.sku, data.latest, month, prev, period]);
+
+  const prevOf = (r) => (mom ? Object.keys(r.platforms).reduce((s, p) => s + (mom.byKey[`${p}|${r.sku}`] || 0), 0) : null);
+  const pct = (cur, before) => (before > 0 ? ((cur - before) / before) * 100 : null);
+
   const totalRev = list.reduce((s, r) => s + r.rev, 0);
+  const totalPrev = mom ? list.reduce((s, r) => s + prevOf(r), 0) : null;
+  const platTotals = ['Zepto', 'Blinkit', 'Instamart', 'Big Basket'].map((p) => {
+    const rows = list.filter((r) => r.platforms[p] !== undefined);
+    const rev = rows.reduce((s, r) => s + (r.platforms[p] || 0), 0);
+    const units = rows.reduce((s, r) => s + (r.platUnits[p] || 0), 0);
+    const before = mom ? rows.reduce((s, r) => s + (mom.byKey[`${p}|${r.sku}`] || 0), 0) : null;
+    return { p, rev, units, delta: mom ? pct(rev, before) : null };
+  }).filter((x) => x.rev > 0 || x.units > 0);
   const totalUnits = list.reduce((s, r) => s + r.units, 0);
   const catRev = {};
   list.forEach((r) => { catRev[r.category] = (catRev[r.category] || 0) + r.rev; });
   const topCat = Object.keys(catRev).sort((a, b) => catRev[b] - catRev[a])[0] || '--';
 
   if (selected) {
-    return <SkuDetail sku={selected} src={src} month={month} prev={prev} onBack={() => setSelected(null)} period={period} customStart={customStart} customEnd={customEnd} latest={data.latest} />;
+    return <SkuDetail sku={selected} src={src} month={month} prev={prev} onBack={() => setSelected(null)} period={period} customStart={customStart} customEnd={customEnd} latest={data.latest} mom={mom} />;
   }
 
   return (
     <div className="stack">
       <div className="toolbar">
         <Segmented label="Category" value={cat} onChange={setCat}
-          options={[{ id: 'All', label: 'All' }, ...CATEGORIES.map((c) => ({ id: c, label: c }))]} />
+          options={[{ id: 'All', label: 'All' }, ...CATEGORIES.map((c) => ({ id: c, label: c })), { id: 'Jowar', label: 'Jowar' }]} />
         <Select label="Platform" value={plat} onChange={setPlat}
           options={['All', 'Blinkit', 'Zepto', 'Instamart', 'Big Basket'].map((p) => ({ value: p, label: p === 'All' ? 'All platforms' : p }))} />
         <input className="search" type="search" placeholder="Search SKU" aria-label="Search SKU" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <KpiGrid cols={3}>
-        <Kpi label={`${PERIOD_TAG[period] || ''} revenue`} value={totalRev} format={fmt} accent="#f97316" sub={`${list.length} SKUs`} />
+        <Kpi label={`${PERIOD_TAG[period] || ''} revenue`} value={totalRev} format={fmt} accent="#f97316"
+          delta={mom ? pct(totalRev, totalPrev) : undefined}
+          sub={mom ? `${list.length} SKUs · vs ${mom.isLatestMonth ? `first ${mom.upto} days of ` : ''}last month` : `${list.length} SKUs`} />
         <Kpi label="Total units (MTD)" value={totalUnits} format={(v) => fmt(v, false)} accent="#3b82f6"
           sub={`ASP ₹${totalUnits > 0 ? (totalRev / totalUnits).toFixed(0) : '--'}`} />
         <Kpi label="Top category" value={topCat} accent="#8b7cf6" sub="by revenue" />
       </KpiGrid>
+
+      {platTotals.length > 0 && (
+        <div className="platform-grid compact">
+          {platTotals.map(({ p, rev, units, delta }) => (
+            <article key={p} className="platform-card" style={{ '--p': platColor(p) }}>
+              <header><h3>{p}</h3>{delta !== null && <Delta value={delta} />}</header>
+              <div className="big-num">{fmt(rev)}</div>
+              <div className="muted mono">{fmt(units, false)} units · {totalRev > 0 ? ((rev / totalRev) * 100).toFixed(0) : 0}% of total</div>
+            </article>
+          ))}
+        </div>
+      )}
 
       <div className="card table-card">
         <header className="card-head">
@@ -110,7 +159,7 @@ export default function SkuView() {
             <Empty title="No SKUs match these filters" />
           ) : (
             <table className="table" style={{ minWidth: 900 }}>
-              <thead><tr><th style={{ width: 44 }}>#</th><th>SKU</th><th>Category</th><th className="r">Revenue</th><th className="r">Units</th><th className="r">Est. revenue</th><th className="r">% of total</th><th>Platforms</th></tr></thead>
+              <thead><tr><th style={{ width: 44 }}>#</th><th>SKU</th><th>Category</th><th className="r">Revenue</th>{mom && <th className="r">vs prev month</th>}<th className="r">Units</th><th className="r">Est. revenue</th><th className="r">% of total</th><th>Platforms</th></tr></thead>
               <tbody>
                 {list.map((r, i) => (
                   <tr key={r.sku} className="clickable" tabIndex={0} onClick={() => setSelected(r.sku)}
@@ -119,6 +168,15 @@ export default function SkuView() {
                     <td className="strong">{r.sku}</td>
                     <td><CatBadge cat={r.category} color={catColor(r.category)} /></td>
                     <td className="r strong">{fmt(r.rev)}</td>
+                    {mom && (() => {
+                      const before = prevOf(r);
+                      const d = pct(r.rev, before);
+                      return (
+                        <td className="r" title={`Last month${mom.isLatestMonth ? `, first ${mom.upto} days` : ''}: ${fmt(before)}`}>
+                          {d === null ? <span className="chip neu">{r.rev > 0 ? 'new' : '–'}</span> : <Delta value={d} />}
+                        </td>
+                      );
+                    })()}
                     <td className="r">{fmt(r.units, false)}</td>
                     <td className="r muted">{fmt(r.est)}</td>
                     <td className="r"><PctBar pct={totalRev > 0 ? (r.rev / totalRev) * 100 : 0} color={catColor(r.category)} /></td>
@@ -134,7 +192,7 @@ export default function SkuView() {
   );
 }
 
-function SkuDetail({ sku, src, month, prev, onBack, period, customStart, customEnd, latest }) {
+function SkuDetail({ sku, src, month, prev, onBack, period, customStart, customEnd, latest, mom }) {
   const { platData, category } = useMemo(() => {
     const match = periodMatcher(period, latest, customStart, customEnd);
     const out = {};
@@ -158,7 +216,14 @@ function SkuDetail({ sku, src, month, prev, onBack, period, customStart, customE
     return { platData: out, category };
   }, [sku, src, month, prev, period, customStart, customEnd, latest]);
 
-  const plats = Object.keys(platData);
+  const plats = Object.keys(platData).sort((a, b) => platData[b].rev - platData[a].rev);
+  const before = (p) => (mom ? mom.byKey[`${p}|${sku}`] || 0 : null);
+  const pctChange = (cur, was) => (was > 0 ? ((cur - was) / was) * 100 : null);
+  const totalRev = plats.reduce((s, p) => s + platData[p].rev, 0);
+  const totalUnits = plats.reduce((s, p) => s + platData[p].units, 0);
+  const totalBefore = mom ? plats.reduce((s, p) => s + before(p), 0) : null;
+  const vs = mom ? `vs ${mom.isLatestMonth ? `first ${mom.upto} days of ` : ''}last month` : '';
+
   return (
     <div className="stack">
       <div className="detail-head">
@@ -167,13 +232,22 @@ function SkuDetail({ sku, src, month, prev, onBack, period, customStart, customE
         <CatBadge cat={category} color={catColor(category)} />
       </div>
       <div className="platform-grid compact">
+        {plats.length > 1 && (
+          <article className="platform-card" style={{ '--p': 'var(--accent)' }}>
+            <header><h3>All platforms</h3>{mom && <Delta value={pctChange(totalRev, totalBefore)} />}</header>
+            <div className="big-num">{fmt(totalRev)}</div>
+            <div className="muted mono">{fmt(totalUnits, false)} units · ASP ₹{totalUnits > 0 ? (totalRev / totalUnits).toFixed(0) : '--'}</div>
+            {mom && <div className="muted mono small">{vs}: {fmt(totalBefore)}</div>}
+          </article>
+        )}
         {plats.map((p) => {
           const d = platData[p];
           return (
             <article key={p} className="platform-card" style={{ '--p': platColor(p) }}>
-              <header><h3>{p}</h3></header>
+              <header><h3>{p}</h3>{mom && <Delta value={pctChange(d.rev, before(p))} />}</header>
               <div className="big-num">{fmt(d.rev)}</div>
               <div className="muted mono">{fmt(d.units, false)} units · ASP ₹{d.units > 0 ? (d.rev / d.units).toFixed(0) : '--'}</div>
+              {mom && <div className="muted mono small">{vs}: {fmt(before(p))}</div>}
             </article>
           );
         })}
